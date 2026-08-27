@@ -1,0 +1,14 @@
+# Example - the referenced Secret (app-postgres-password here) must already exist in the same
+# namespace, holding the app's own password (e.g. sourced from Vault via the consuming chart, the
+# same way the app itself gets it).
+apiVersion: db.rarosalion.github.io/v1
+kind: PostgresDatabase
+metadata:
+  name: myapp
+  namespace: myapp
+spec:
+  databaseName: myapp
+  username: myapp
+  passwordSecretRef:
+    name: app-postgres-password
+    key: password

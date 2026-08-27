@@ -1,0 +1,43 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: postgresql-operator
+  namespace: {{ .Values.namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: postgresql-operator
+rules:
+  # PostgresDatabase CRs, cluster-wide - the operator needs to see requests from any app namespace.
+  - apiGroups: ["db.rarosalion.github.io"]
+    resources: ["postgresdatabases"]
+    verbs: ["get", "list", "watch", "patch"]
+  - apiGroups: ["db.rarosalion.github.io"]
+    resources: ["postgresdatabases/status"]
+    verbs: ["patch"]
+  # Read-only, and only by exact name (no list/watch) - the operator only ever fetches the specific
+  # secret a PostgresDatabase references, never enumerates secrets across the cluster.
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get"]
+  # kopf's own leader-election/progress tracking uses events + a lease per operator instance.
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create", "patch"]
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["get", "create", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: postgresql-operator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: postgresql-operator
+subjects:
+  - kind: ServiceAccount
+    name: postgresql-operator
+    namespace: {{ .Values.namespace }}
