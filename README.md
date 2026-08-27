@@ -5,18 +5,24 @@ Kubernetes operator that provisions Postgres roles/databases on an external Post
 
 ## Why
 
-Apps that need a Postgres database used to get one via an ansible playbook reading a Bitwarden
-secret, with the same password then duplicated by hand into whatever secret store the consuming
-Helm chart used (Vault). That duplication is exactly what caused real outages - a password never
-copied over, or copied wrong. This operator makes the app's own chart the single source of truth:
-it already has its own password (from Vault, same as always); the chart just also creates a small
-`PostgresDatabase` resource pointing at that same Secret, and the operator does the rest.
+Apps deployed to Kubernetes often need a database to exist before they can start, but Postgres
+itself usually lives outside the cluster's own reconciliation model - so provisioning that database
+ends up as a manual step, or an external script/playbook run out-of-band from the actual app
+deployment. That split invites drift: the app's Helm release and its database can easily end up
+out of sync, especially once credentials are involved (a password generated in one place has to be
+copied correctly into another).
+
+This operator brings database provisioning into Kubernetes' own declarative model. The app's chart
+already has its own database password as a Secret (however it manages secrets - Vault, External
+Secrets, sealed-secrets, whatever); it just also creates a small `PostgresDatabase` resource
+pointing at that same Secret, and the operator reconciles the actual role/database into existence -
+no separate script, no second copy of the password to keep in sync.
 
 ## How it works
 
 - A `PostgresDatabase` CR lives in the *same namespace* as the app that needs it, and references a
-  Secret (also in that namespace) holding the role's password - the app's own existing Vault-sourced
-  secret, not a new one.
+  Secret (also in that namespace) holding the role's password - the app's own existing secret, not
+  a new one.
 - The operator watches for these CRs cluster-wide, but only ever reads Secrets by exact name (no
   list/watch on secrets) - it can't enumerate what else exists in a namespace.
 - It connects to the target Postgres server using an admin credential that lives *only* in the
