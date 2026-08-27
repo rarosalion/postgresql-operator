@@ -1,9 +1,9 @@
 import base64
+import contextlib
 import os
 
 import kopf
 import psycopg2
-import psycopg2.extensions
 import psycopg2.sql
 from kubernetes import client, config
 
@@ -15,7 +15,12 @@ ADMIN_PASSWORD = os.environ["DB_ADMIN_PASSWORD"]
 
 @kopf.on.startup()
 def startup(**_):
-    config.load_incluster_config()
+    try:
+        config.load_incluster_config()
+    except config.ConfigException:
+        # Not running in a Pod - fall back to the local kubeconfig, for running the operator
+        # directly against a real cluster during development.
+        config.load_kube_config()
 
 
 def _admin_connection():
@@ -26,7 +31,7 @@ def _admin_connection():
         password=ADMIN_PASSWORD,
         dbname="postgres",
     )
-    conn.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
+    conn.autocommit = True
     return conn
 
 
@@ -44,7 +49,10 @@ def reconcile(spec, namespace, patch, logger, **_):
     username = spec["username"]
     password = _read_password(namespace, spec["passwordSecretRef"])
 
-    with _admin_connection() as conn:
+    # contextlib.closing, not `with conn:` - the latter wraps the block in a transaction for
+    # commit/rollback purposes even with autocommit set, which breaks CREATE/DROP DATABASE
+    # (they can't run inside a transaction block).
+    with contextlib.closing(_admin_connection()) as conn:
         with conn.cursor() as cur:
             cur.execute("SELECT 1 FROM pg_roles WHERE rolname = %s", (username,))
             if cur.fetchone():
