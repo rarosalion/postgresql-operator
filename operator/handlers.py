@@ -52,35 +52,34 @@ def reconcile(spec, namespace, patch, logger, **_):
     # contextlib.closing, not `with conn:` - the latter wraps the block in a transaction for
     # commit/rollback purposes even with autocommit set, which breaks CREATE/DROP DATABASE
     # (they can't run inside a transaction block).
-    with contextlib.closing(_admin_connection()) as conn:
-        with conn.cursor() as cur:
-            cur.execute("SELECT 1 FROM pg_roles WHERE rolname = %s", (username,))
-            if cur.fetchone():
-                cur.execute(
-                    psycopg2.sql.SQL("ALTER ROLE {} WITH PASSWORD %s").format(
-                        psycopg2.sql.Identifier(username)
-                    ),
-                    (password,),
-                )
-                logger.info(f"Role {username!r} already existed, password updated")
-            else:
-                cur.execute(
-                    psycopg2.sql.SQL("CREATE ROLE {} WITH LOGIN PASSWORD %s").format(
-                        psycopg2.sql.Identifier(username)
-                    ),
-                    (password,),
-                )
-                logger.info(f"Created role {username!r}")
+    with contextlib.closing(_admin_connection()) as conn, conn.cursor() as cur:
+        cur.execute("SELECT 1 FROM pg_roles WHERE rolname = %s", (username,))
+        if cur.fetchone():
+            cur.execute(
+                psycopg2.sql.SQL("ALTER ROLE {} WITH PASSWORD %s").format(
+                    psycopg2.sql.Identifier(username)
+                ),
+                (password,),
+            )
+            logger.info(f"Role {username!r} already existed, password updated")
+        else:
+            cur.execute(
+                psycopg2.sql.SQL("CREATE ROLE {} WITH LOGIN PASSWORD %s").format(
+                    psycopg2.sql.Identifier(username)
+                ),
+                (password,),
+            )
+            logger.info(f"Created role {username!r}")
 
-            cur.execute("SELECT 1 FROM pg_database WHERE datname = %s", (database,))
-            if not cur.fetchone():
-                cur.execute(
-                    psycopg2.sql.SQL("CREATE DATABASE {} OWNER {}").format(
-                        psycopg2.sql.Identifier(database),
-                        psycopg2.sql.Identifier(username),
-                    )
+        cur.execute("SELECT 1 FROM pg_database WHERE datname = %s", (database,))
+        if not cur.fetchone():
+            cur.execute(
+                psycopg2.sql.SQL("CREATE DATABASE {} OWNER {}").format(
+                    psycopg2.sql.Identifier(database),
+                    psycopg2.sql.Identifier(username),
                 )
-                logger.info(f"Created database {database!r}")
+            )
+            logger.info(f"Created database {database!r}")
 
     patch.status["ready"] = True
     patch.status["message"] = "Role and database present"
