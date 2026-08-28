@@ -1,0 +1,5 @@
+apiVersion: v2
+name: postgres-database-request
+description: Requests a role/database from postgresql-operator via a PostgresDatabase CR
+type: application
+version: 0.1.0

@@ -1,0 +1,8 @@
+databaseName: ""
+username: ""
+
+# Provide ONE of the two:
+password: "" # chart creates its own Secret from this plaintext value
+existingSecret: # OR point at a Secret that already exists
+  name: ""
+  key: ""

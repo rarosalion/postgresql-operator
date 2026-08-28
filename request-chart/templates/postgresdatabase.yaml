@@ -1,0 +1,10 @@
+apiVersion: db.rarosalion.github.io/v1
+kind: PostgresDatabase
+metadata:
+  name: {{ .Release.Name }}
+spec:
+  databaseName: {{ .Values.databaseName | quote }}
+  username: {{ .Values.username | quote }}
+  passwordSecretRef:
+    name: {{ .Values.existingSecret.name | default (printf "%s-db-password" .Release.Name) }}
+    key: {{ .Values.existingSecret.key | default "password" }}
