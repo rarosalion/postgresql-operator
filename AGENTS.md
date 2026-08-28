@@ -10,6 +10,12 @@ rationale.
 - `chart/` - the Helm chart. `chart/crds/` is installed automatically by `helm install`/`upgrade`
   and is *not* removed by `helm uninstall` (standard Helm CRD behavior).
 - `examples/postgresdatabase.yaml` - shape of a `PostgresDatabase` request.
+- `request-chart/` - a small, separately-versioned chart consuming apps use to request a database
+  (see `README.md`'s "How it works"). Its own `templates/secret.yaml` (when not pointed at an
+  `existingSecret`) creates a Secret with **both** a `username` and a `password` key - not just
+  `password` - so it's directly usable by anything that wants a combined credential Secret (e.g. a
+  chart with a `db.secret.{usernameKey,passwordKey}`-style external-database input), not only by
+  the operator's own `passwordSecretRef`.
 - `Dockerfile` - installs deps directly (not via `pyproject.toml`), so dependency versions are
   currently pinned in two places. Keep them in sync if you bump one.
 
