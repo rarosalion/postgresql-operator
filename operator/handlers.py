@@ -82,8 +82,12 @@ def reconcile(spec, namespace, patch, logger, **_):
 
         cur.execute("SELECT 1 FROM pg_database WHERE datname = %s", (database,))
         if not cur.fetchone():
+            # Explicit ENCODING/TEMPLATE - the cluster's template1 default is SQL_ASCII, and a
+            # bare CREATE DATABASE silently inherits that rather than UTF8.
             cur.execute(
-                psycopg2.sql.SQL("CREATE DATABASE {} OWNER {}").format(
+                psycopg2.sql.SQL(
+                    "CREATE DATABASE {} OWNER {} ENCODING 'UTF8' LC_COLLATE 'C' LC_CTYPE 'C' TEMPLATE template0"
+                ).format(
                     psycopg2.sql.Identifier(database),
                     psycopg2.sql.Identifier(username),
                 )
