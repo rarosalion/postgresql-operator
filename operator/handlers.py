@@ -71,6 +71,15 @@ def reconcile(spec, namespace, patch, logger, **_):
             )
             logger.info(f"Created role {username!r}")
 
+        # CREATEROLE grants admin on roles it creates, but not automatically the ability to
+        # SET ROLE to them (PG16+) - which CREATE DATABASE ... OWNER needs, since assigning
+        # ownership requires acting as that role. Idempotent - safe to run every reconcile.
+        cur.execute(
+            psycopg2.sql.SQL("GRANT {} TO CURRENT_USER WITH SET TRUE").format(
+                psycopg2.sql.Identifier(username)
+            )
+        )
+
         cur.execute("SELECT 1 FROM pg_database WHERE datname = %s", (database,))
         if not cur.fetchone():
             cur.execute(
