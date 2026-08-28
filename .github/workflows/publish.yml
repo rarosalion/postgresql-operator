@@ -40,3 +40,9 @@ jobs:
         run: |
           helm package chart --version ${{ steps.version.outputs.version }} --app-version ${{ steps.version.outputs.version }}
           helm push postgresql-operator-${{ steps.version.outputs.version }}.tgz oci://ghcr.io/rarosalion/charts
+
+      - name: Package and push request chart
+        run: |
+          version=$(grep '^version:' request-chart/Chart.yaml | awk '{print $2}')
+          helm package request-chart --version "$version" --app-version "$version"
+          helm push postgres-database-request-"$version".tgz oci://ghcr.io/rarosalion/charts
