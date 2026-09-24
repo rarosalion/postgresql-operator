@@ -55,12 +55,23 @@ def reconcile(spec, namespace, patch, logger, **_):
     with contextlib.closing(_admin_connection()) as conn, conn.cursor() as cur:
         cur.execute("SELECT 1 FROM pg_roles WHERE rolname = %s", (username,))
         if cur.fetchone():
-            cur.execute(
-                psycopg2.sql.SQL("ALTER ROLE {} WITH PASSWORD %s").format(
-                    psycopg2.sql.Identifier(username)
-                ),
-                (password,),
-            )
+            try:
+                cur.execute(
+                    psycopg2.sql.SQL("ALTER ROLE {} WITH PASSWORD %s").format(
+                        psycopg2.sql.Identifier(username)
+                    ),
+                    (password,),
+                )
+            except psycopg2.errors.InsufficientPrivilege:
+                # The operator only holds admin on roles it created itself, so a role that
+                # pre-dates it needs a one-off grant from a superuser. Retrying can't fix that.
+                message = (
+                    f"Role {username!r} exists but {ADMIN_USER!r} has no admin on it. As a "
+                    f"superuser, run: GRANT {username} TO {ADMIN_USER} WITH ADMIN OPTION, SET TRUE"
+                )
+                patch.status["ready"] = False
+                patch.status["message"] = message
+                raise kopf.PermanentError(message)
             logger.info(f"Role {username!r} already existed, password updated")
         else:
             cur.execute(

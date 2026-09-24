@@ -51,6 +51,7 @@ image cache with `docker build`, so no registry push is needed.
   `CREATE DATABASE`/`DROP DATABASE` (they can't run inside a transaction block) with a confusing,
   deterministic `ActiveSqlTransaction` error. Use `contextlib.closing(_admin_connection())` instead
   - it only closes the connection, no transaction wrapping.
+- **A role that pre-dates the operator can't be reconciled until it is adopted.** `ALTER ROLE ... WITH PASSWORD` fails with `InsufficientPrivilege` on PG16+ unless the admin user has the ADMIN option on that role, and the operator only gets that on roles it creates. `reconcile` turns this into a `kopf.PermanentError` (no retry loop) with the fix in `status.message`; a superuser runs the `GRANT` once. Before that grant, check the CR's password secret matches the role's current password, since the first successful reconcile overwrites it.
 - **The `ClusterRole` needs `list`/`watch` on `CustomResourceDefinitions`.** kopf's cluster-wide
   resource discovery requires this. Without it, the operator logs repeated 403s in the background,
   eventually gives up, and silently stops watching for CR changes (only refreshing on pod restart).

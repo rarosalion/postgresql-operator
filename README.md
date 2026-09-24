@@ -28,6 +28,7 @@ no separate script, no second copy of the password to keep in sync.
 - It connects to the target Postgres server using an admin credential that lives *only* in the
   operator's own namespace (`postgresql-operator` by default) and is never mirrored anywhere.
 - `CREATE ROLE`/`CREATE DATABASE` are idempotent (checks `pg_roles`/`pg_database` first).
+- Adopting a role that already exists (not created by the operator) needs a one-off grant from a superuser, because the operator only holds admin on roles it created: `GRANT <role> TO <operator user> WITH ADMIN OPTION, SET TRUE`. Without it the CR is marked not ready with that exact command in `status.message`, and the operator stops retrying.
 - Deleting a `PostgresDatabase` CR does **not** drop the role or database - that's deliberate, not
   an oversight. There's no delete handler at all.
 

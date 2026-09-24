@@ -1,6 +1,6 @@
 image:
   repository: ghcr.io/rarosalion/postgresql-operator
-  tag: "0.1.2"
+  tag: "0.1.3"
 
 namespace: postgresql-operator
 
