@@ -2,6 +2,13 @@ apiVersion: db.rarosalion.github.io/v1
 kind: PostgresDatabase
 metadata:
   name: {{ .Release.Name }}
+  {{- if .Values.password }}
+  annotations:
+    # Forces a spec-less diff on a password-only change, since the operator's reconcile handler
+    # only watches this CR, not the Secret it points at - without this, rotating the password here
+    # updates the Secret but never re-triggers ALTER ROLE.
+    checksum/password: {{ .Values.password | sha256sum | quote }}
+  {{- end }}
 spec:
   databaseName: {{ .Values.databaseName | quote }}
   username: {{ .Values.username | quote }}

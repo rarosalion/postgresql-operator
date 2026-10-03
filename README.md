@@ -24,7 +24,15 @@ no separate script, no second copy of the password to keep in sync.
   Secret (also in that namespace) holding the role's password - the app's own existing secret, not
   a new one.
 - The operator watches for these CRs cluster-wide, but only ever reads Secrets by exact name (no
-  list/watch on secrets) - it can't enumerate what else exists in a namespace.
+  list/watch on secrets) - it can't enumerate what else exists in a namespace. A consequence of
+  this is that the operator only reconciles on a change to the CR itself, not on a change to the
+  Secret it points at - a password rotation that only touches the Secret produces no CR diff, so
+  the role's password silently never gets updated. The `postgres-database-request` chart (see
+  below) works around this for its own callers by stamping a `checksum/password` annotation on the
+  CR, computed from the password value at render time, so a password change always produces a real
+  CR diff too. A `PostgresDatabase` CR written by hand (not via that chart) needs the same trick,
+  or a manual `kubectl annotate ... force-reconcile=$(date +%s) --overwrite` nudge after rotating
+  the Secret.
 - It connects to the target Postgres server using an admin credential that lives *only* in the
   operator's own namespace (`postgresql-operator` by default) and is never mirrored anywhere.
 - `CREATE ROLE`/`CREATE DATABASE` are idempotent (checks `pg_roles`/`pg_database` first).
